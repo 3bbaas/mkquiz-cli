@@ -1,0 +1,17 @@
+tests/
+docs/
+.idea/
+node_modules/
+
+tasks.txt
+.mkquizrc
+json.js
+temp.json
+example.json
+package-lock.json
+*.json
+
+*temp*
+*.log
+*.tgz
+*.txt
