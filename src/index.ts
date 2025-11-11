@@ -3,14 +3,14 @@
 import {program} from 'commander';
 import chalk from 'chalk';
 import figlet from 'figlet';
-import configCommand from './src/commands/config.js';
-import addCommand from './src/commands/add.js';
-import rmvCommand from './src/commands/rmv.js';
-import rebuildCommand from './src/commands/rebuild.js';
-import fixPathsCommand from './src/commands/fix-paths.js';
+import configCommand from './commands/config.js';
+import addCommand from './commands/add.js';
+import rmvCommand from './commands/rmv.js';
+import rebuildCommand from './commands/rebuild.js';
+import fixPathsCommand from './commands/fix-paths.js';
 
 
-export default async function intro() {
+async function intro(){
     console.log('\n\n' +
         chalk.cyanBright(
             figlet.textSync('mkquiz', {
@@ -22,6 +22,7 @@ export default async function intro() {
         chalk.cyan('\n\n\tCLI to add quizzes to a Quizzez static project\n')
     );
 }
+
 program
     .version('1.0.3')
     .description('CLI to add quizzes to a Quizzez static project')
