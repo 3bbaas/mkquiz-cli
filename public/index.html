@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>mkquiz - Quiz Management</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-graduation-cap"></i> mkquiz</h1>
+            <p class="subtitle">Quiz Management System</p>
+        </header>
+
+        <nav class="tabs">
+            <button class="tab-btn active" data-tab="config">
+                <i class="fas fa-cog"></i> Configuration
+            </button>
+            <button class="tab-btn" data-tab="add">
+                <i class="fas fa-plus-circle"></i> Add Quiz
+            </button>
+            <button class="tab-btn" data-tab="pdf">
+                <i class="fas fa-file-pdf"></i> PDF to Quiz
+            </button>
+            <button class="tab-btn" data-tab="manage">
+                <i class="fas fa-tasks"></i> Manage Quizzes
+            </button>
+        </nav>
+
+        <!-- Configuration Tab -->
+        <div id="config" class="tab-content active">
+            <h2>Configuration</h2>
+            <div id="config-status" class="status-message"></div>
+            
+            <form id="config-form">
+                <div class="form-group">
+                    <label for="projectPath">Project Path:</label>
+                    <input type="text" id="projectPath" name="projectPath" 
+                           placeholder="/path/to/quizzes/project" required>
+                    <small>Root directory of your Quizzez project</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="templateFile">Template File:</label>
+                    <input type="text" id="templateFile" name="templateFile" 
+                           placeholder="/path/to/template.html" required>
+                    <small>HTML template file with placeholders</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="allQuizzezJsonPath">All Quizzes JSON Path:</label>
+                    <input type="text" id="allQuizzezJsonPath" name="allQuizzezJsonPath" 
+                           placeholder="/path/to/allQuizzes.json" required>
+                    <small>JSON file containing all quiz metadata</small>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Save Configuration
+                </button>
+                <button type="button" id="load-config-btn" class="btn btn-secondary">
+                    <i class="fas fa-sync-alt"></i> Load Current Config
+                </button>
+            </form>
+        </div>
+
+        <!-- Add Quiz Tab -->
+        <div id="add" class="tab-content">
+            <h2>Add New Quiz</h2>
+            <div id="add-status" class="status-message"></div>
+            
+            <form id="add-quiz-form">
+                <div class="form-group">
+                    <label for="quizName">Quiz Name:</label>
+                    <input type="text" id="quizName" name="quizName" 
+                           placeholder="e.g., Computer Architecture" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="year">Year:</label>
+                        <select id="year" name="year" required>
+                            <option value="">Select Year</option>
+                            <option value="1st">1st</option>
+                            <option value="2nd">2nd</option>
+                            <option value="3rd">3rd</option>
+                            <option value="4th">4th</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="quizFor">Quiz For:</label>
+                        <select id="quizFor" name="quizFor" required>
+                            <option value="">Select Type</option>
+                            <option value="Midterm">Midterm</option>
+                            <option value="Final">Final</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="questionType">Question Type:</label>
+                        <select id="questionType" name="questionType" required>
+                            <option value="">Select Type</option>
+                            <option value="MCQ">MCQ (Multiple Choice)</option>
+                            <option value="TF">TF (True/False)</option>
+                            <option value="QB">QB (Question Bank)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="jsonFile">Quiz JSON File:</label>
+                    <input type="file" id="jsonFile" name="jsonFile" accept=".json" required>
+                    <small>JSON file containing questions and answers</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="published" name="published" checked>
+                        Published
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Add Quiz
+                </button>
+            </form>
+        </div>
+
+        <!-- PDF to Quiz Tab -->
+        <div id="pdf" class="tab-content">
+            <h2>PDF to Quiz</h2>
+            <div id="pdf-status" class="status-message"></div>
+            
+            <div class="info-box">
+                <i class="fas fa-info-circle"></i>
+                <div>
+                    <strong>Upload a PDF file</strong> containing quiz questions, and our AI will automatically extract and convert them to quiz format.
+                    Math formulas will be converted to KaTeX format.
+                    <br><br>
+                    <strong>Note:</strong> You need to set your Gemini API key in the configuration or environment variables.
+                </div>
+            </div>
+
+            <form id="pdf-quiz-form">
+                <div class="form-group">
+                    <label for="pdfQuizName">Quiz Name:</label>
+                    <input type="text" id="pdfQuizName" name="quizName" 
+                           placeholder="e.g., Computer Architecture" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="pdfYear">Year:</label>
+                        <select id="pdfYear" name="year" required>
+                            <option value="">Select Year</option>
+                            <option value="1st">1st</option>
+                            <option value="2nd">2nd</option>
+                            <option value="3rd">3rd</option>
+                            <option value="4th">4th</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="pdfQuizFor">Quiz For:</label>
+                        <select id="pdfQuizFor" name="quizFor" required>
+                            <option value="">Select Type</option>
+                            <option value="Midterm">Midterm</option>
+                            <option value="Final">Final</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="pdfQuestionType">Question Type:</label>
+                        <select id="pdfQuestionType" name="questionType" required>
+                            <option value="">Select Type</option>
+                            <option value="MCQ">MCQ (Multiple Choice)</option>
+                            <option value="TF">TF (True/False)</option>
+                            <option value="QB">QB (Question Bank)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="pdfFile">PDF File:</label>
+                    <input type="file" id="pdfFile" name="pdfFile" accept=".pdf" required>
+                    <small>PDF file containing quiz questions</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="geminiApiKey">Gemini API Key:</label>
+                    <input type="text" id="geminiApiKey" name="geminiApiKey" 
+                           placeholder="Loading from environment...">
+                    <small id="gemini-key-info">Get your free API key from <a href="https://makersuite.google.com/app/apikey" target="_blank">Google AI Studio</a></small>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="pdfPublished" name="published" checked>
+                        Published
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-magic"></i> Extract & Add Quiz
+                </button>
+            </form>
+        </div>
+
+        <!-- Manage Quizzes Tab -->
+        <div id="manage" class="tab-content">
+            <h2>Manage Quizzes</h2>
+            <div id="manage-status" class="status-message"></div>
+            
+            <div class="form-group">
+                <label for="filter-year">Filter by Year:</label>
+                <select id="filter-year">
+                    <option value="">All Years</option>
+                    <option value="1st">1st Year</option>
+                    <option value="2nd">2nd Year</option>
+                    <option value="3rd">3rd Year</option>
+                    <option value="4th">4th Year</option>
+                </select>
+            </div>
+
+            <div id="quizzes-list" class="quizzes-container">
+                <p class="loading">Loading quizzes...</p>
+            </div>
+
+            <button id="remove-selected-btn" class="btn btn-danger" style="display: none;">
+                <i class="fas fa-trash-alt"></i> Remove Selected
+            </button>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirm-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h3 id="modal-title">Confirm Action</h3>
+            </div>
+            <div class="modal-body">
+                <p id="modal-message"></p>
+            </div>
+            <div class="modal-footer">
+                <button id="modal-cancel" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button id="modal-confirm" class="btn btn-danger">
+                    <i class="fas fa-check"></i> Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/app.js"></script>
+</body>
+</html>

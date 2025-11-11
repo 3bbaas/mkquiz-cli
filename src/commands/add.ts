@@ -1,187 +1,183 @@
 import inquirer from 'inquirer';
-import fs from 'fs';
 import path from 'path';
 import ora from 'ora';
-import { processTemplate } from '../lib/templateProcessor.js';
-import { copyJSONToTarget, ensureQuizFolder, handleSIGINT } from '../utils/fileUtils.js';
+import { processTemplate } from '../lib/templateProcessor';
+import { copyJSONToTarget, ensureQuizFolder, handleSIGINT, writeFile } from '../utils/fileUtils';
+import { loadAndValidateConfig } from '../utils/configManager';
+import { 
+    loadAllQuizzes, 
+    saveAllQuizzes, 
+    addQuizToStructure, 
+    getExistingQuizzes, 
+    countQuizzesByName 
+} from '../utils/jsonUtils';
+import { validateQuizJsonFile } from '../utils/validation';
+import { normalizeQuizPath } from '../utils/pathUtils';
+import { OraSpinner, AddQuizAnswers, QuizData } from '../types';
+import { MkquizError, QuizOperationError } from '../utils/errors';
+import log from '../utils/logger';
 
-export default async function addCommand() {
-  let spinner = ora();
-  handleSIGINT(spinner);
-  const configPath = path.join(process.cwd(), '.mkquizrc');
+/**
+ * Add command - Adds a new quiz to the project
+ */
+export default async function addCommand(): Promise<void> {
+    let spinner: OraSpinner = ora();
+    handleSIGINT(spinner);
 
-  if (!fs.existsSync(configPath)) {
-    console.log('Configuration not found. Run `mkquiz config` first.');
-    process.exit(1);
-  }
+    try {
+        log.info('Starting add quiz command');
 
-  const { projectPath, templateFile, allQuizzezJsonPath } = JSON.parse(
-    fs.readFileSync(configPath, 'utf-8'),
-  );
-  const allQuizzes = JSON.parse(fs.readFileSync(allQuizzezJsonPath, 'utf-8'));
+        
+        const config = loadAndValidateConfig();
+        const { projectPath, templateFile, allQuizzezJsonPath } = config;
 
-  let quizzez = [];
-  const countQuiz = (item) => {
-    return quizzez.reduce((count, x) => (x === item ? count + 1 : count), 0);
-  };
+        
+        const allQuizzes = loadAllQuizzes(allQuizzezJsonPath);
 
-  const answers = await inquirer.prompt([
-    {
-      type: 'input',
-      name: 'quizName',
-      message: 'Quiz name (e.g. Computer Arch):',
-      validate: (input) => (input.trim() !== '' ? true : 'Name cannot be empty'),
-    },
-    {
-      type: 'list',
-      name: 'quizFor',
-      message: 'Quiz for:',
-      choices: ['Midterm', 'Final'],
-    },
-    {
-      type: 'list',
-      name: 'questionType',
-      message: 'Type of questions:',
-      choices: ['MCQ', 'TF', 'QB'],
-    },
-    {
-      type: 'list',
-      name: 'year',
-      message: 'Quiz for year:',
-      choices: ['1st', '2nd', '3rd', '4th'],
-    },
-    {
-      type: 'input',
-      name: 'jsonPath',
-      message: 'Path to quiz JSON file:',
-      validate: (input) => {
-        if (!fs.existsSync(input) || path.extname(input) !== '.json') {
-          return 'Valid .json file required';
+        
+        const answers = await inquirer.prompt<AddQuizAnswers>([
+            {
+                type: 'input',
+                name: 'quizName',
+                message: 'Quiz name (e.g. Computer Arch):',
+                validate: (input: string) => {
+                    if (input.trim() === '') {
+                        return 'Name cannot be empty';
+                    }
+                    return true;
+                },
+            },
+            {
+                type: 'list',
+                name: 'quizFor',
+                message: 'Quiz for:',
+                choices: ['Midterm', 'Final'],
+            },
+            {
+                type: 'list',
+                name: 'questionType',
+                message: 'Type of questions:',
+                choices: ['MCQ', 'TF', 'QB'],
+            },
+            {
+                type: 'list',
+                name: 'year',
+                message: 'Quiz for year:',
+                choices: ['1st', '2nd', '3rd', '4th'],
+            },
+            {
+                type: 'input',
+                name: 'jsonPath',
+                message: 'Path to quiz JSON file:',
+                validate: (input: string) => {
+                    try {
+                        validateQuizJsonFile(input);
+                        return true;
+                    } catch (error) {
+                        return (error as Error).message;
+                    }
+                },
+            },
+            {
+                type: 'confirm',
+                name: 'published',
+                message: 'Published?',
+                default: true,
+            },
+        ]);
+
+        spinner = ora('Processing quiz...').start();
+
+        
+        const quizQuestions = validateQuizJsonFile(answers.jsonPath);
+        const questionsCount = quizQuestions.length;
+        log.info(`Loaded ${questionsCount} questions from JSON file`);
+
+        
+        const existingQuizzes = getExistingQuizzes(
+            allQuizzes,
+            answers.year,
+            answers.quizName,
+            answers.quizFor
+        );
+
+        const baseQuizName = `${answers.quizName} ${answers.questionType}`;
+        const count = countQuizzesByName(existingQuizzes, baseQuizName);
+        const suffix = count > 0 ? String(count + 1) : '';
+        const quizName = baseQuizName + suffix;
+
+        log.debug('Quiz naming determined', { baseQuizName, count, quizName });
+
+        
+        const quizFolderPath = await ensureQuizFolder(
+            projectPath,
+            answers.year,
+            answers.quizFor,
+            quizName,
+            spinner
+        );
+
+        if (!quizFolderPath) {
+            throw new QuizOperationError('User cancelled quiz creation');
         }
-        try {
-          const jsonContent = JSON.parse(fs.readFileSync(input, 'utf-8'));
-          if (!Array.isArray(jsonContent)) {
-            return 'JSON file must contain an array of questions';
-          }
 
-          for (let i = 0; i < jsonContent.length; i++) {
-            const question = jsonContent[i];
-            if (!question.question || typeof question.question !== 'string') {
-              return `Question at index ${i} is missing or has invalid 'question' property`;
-            }
-            if (!question.options || typeof question.options !== 'object') {
-              return `Question at index ${i} is missing or has invalid 'options' property`;
-            }
-            if (!question.answer || typeof question.answer !== 'string') {
-              return `Question at index ${i} is missing or has invalid 'answer' property`;
-            }
-            if (!question.id || typeof question.id !== 'number') {
-              return `Question at index ${i} is missing or has invalid 'id' property`;
-            }
-            if (question.options) {
-              const optionsKeys = Object.keys(question.options);
-              if (optionsKeys.length === 0) {
-                return `Question at index ${i} has empty options`;
-              }
-              if (
-                optionsKeys.length === 2 &&
-                optionsKeys.includes('a') &&
-                optionsKeys.includes('b') &&
-                question.options.a === 'True' &&
-                question.options.b === 'False'
-              ) {
-                continue;
-              }
-              if (optionsKeys.length < 2) {
-                return `Question at index ${i} must have at least 2 options`;
-              }
-              if (!optionsKeys.every((key) => typeof question.options[key] === 'string')) {
-                return `Question at index ${i} has invalid option values`;
-              }
-            }
-          }
-          return true;
-        } catch (error) {
-          return 'Invalid JSON file: ' + error.message;
+        
+        const jsonTargetPath = await copyJSONToTarget(
+            quizFolderPath,
+            answers.jsonPath,
+            `${answers.quizName}_${answers.questionType}`
+        );
+
+        
+        const duration = Math.floor((questionsCount / 10) * 4) + 1;
+
+        
+        const indexHtml = processTemplate(templateFile, {
+            quizName: answers.quizName,
+            quizFor: answers.quizFor,
+            questionsCount,
+            duration,
+            jsonPath: normalizeQuizPath(jsonTargetPath),
+        });
+
+        
+        writeFile(path.join(quizFolderPath, 'index.html'), indexHtml);
+
+        
+        const quizData: QuizData = {
+            type: answers.questionType,
+            path: normalizeQuizPath(quizFolderPath),
+            published: answers.published,
+            JSON: normalizeQuizPath(jsonTargetPath),
+        };
+
+        addQuizToStructure(
+            allQuizzes,
+            answers.year,
+            answers.quizName,
+            answers.quizFor,
+            quizData
+        );
+
+        
+        saveAllQuizzes(allQuizzezJsonPath, allQuizzes);
+
+        spinner.succeed(`Quiz "${answers.quizName}" added successfully with ${questionsCount} questions`);
+        log.success('Quiz added successfully', {
+            name: answers.quizName,
+            year: answers.year,
+            type: answers.questionType,
+            questions: questionsCount,
+        });
+    } catch (error) {
+        spinner.fail('Failed to add quiz');
+
+        if (error instanceof MkquizError) {
+            log.error(error.message);
+        } else {
+            log.error('Unexpected error during quiz addition', error);
         }
-      },
-    },
-    {
-      type: 'confirm',
-      name: 'published',
-      message: 'Published?',
-      default: true,
-    },
-  ]);
 
-  spinner = ora('Processing quiz...').start();
-  try {
-    const jsonContent = JSON.parse(fs.readFileSync(answers.jsonPath, 'utf-8'));
-    const questionsCount = jsonContent.length;
-
-    const baseQuizName = answers.quizName + ' ' + answers.questionType;
-    quizzez =
-      allQuizzes[0].Year[answers.year]?.[answers.quizName]?.[answers.quizFor]?.map(
-        (q) => answers.quizName + ' ' + q.type,
-      ) || [];
-    const quizName = baseQuizName + (countQuiz(baseQuizName) ? countQuiz(baseQuizName) + 1 : '');
-    quizzez.push(baseQuizName);
-
-    const quizFolderPath = await ensureQuizFolder(
-      projectPath,
-      answers.year,
-      answers.quizFor,
-      quizName,
-      spinner,
-    );
-    const jsonTargetPath = await copyJSONToTarget(
-      quizFolderPath,
-      answers.jsonPath,
-      answers.quizName + '_' + answers.questionType,
-    );
-
-    function normalizeQuizPath(fullPath) {
-      const normalized = fullPath.replace(/\\/g, '/');
-      const match = normalized.match(/\/quizzes\/.*$/);
-      return match ? match[0] : null;
+        process.exit(1);
     }
-
-    const indexHtml = processTemplate(templateFile, {
-      quizName: answers.quizName,
-      quizFor: answers.quizFor,
-      questionsCount: questionsCount,
-      duration: parseInt((questionsCount / 10) * 4) + 1,
-      jsonPath: normalizeQuizPath(jsonTargetPath),
-    });
-
-    fs.writeFileSync(path.join(quizFolderPath, 'index.html'), indexHtml, 'utf-8');
-
-    if (!allQuizzes[0].Year[answers.year]) {
-      allQuizzes[0].Year[answers.year] = {};
-    }
-
-    if (!allQuizzes[0].Year[answers.year][answers.quizName]) {
-      allQuizzes[0].Year[answers.year][answers.quizName] = {};
-    }
-
-    if (!allQuizzes[0].Year[answers.year][answers.quizName][answers.quizFor]) {
-      allQuizzes[0].Year[answers.year][answers.quizName][answers.quizFor] = [];
-    }
-
-    const sanitizedQuizName = answers.quizName.trim().toLowerCase().replace(/\s+/g, '_');
-    const quizData = {
-      type: answers.questionType,
-      path: normalizeQuizPath(quizFolderPath),
-      published: answers.published,
-      JSON: normalizeQuizPath(jsonTargetPath),
-    };
-
-    allQuizzes[0].Year[answers.year][answers.quizName][answers.quizFor].push(quizData);
-
-    fs.writeFileSync(allQuizzezJsonPath, JSON.stringify(allQuizzes, null, 4), 'utf-8');
-
-    spinner.succeed(`Quiz ${answers.quizName} added successfully with ${questionsCount} questions`);
-  } catch (error) {
-    spinner.fail(error.message);
-  }
 }

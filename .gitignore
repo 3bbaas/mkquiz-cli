@@ -2,6 +2,9 @@ tests/
 docs/
 .idea/
 node_modules/
+logs/
+dist/
+uploads/
 
 tasks.txt
 .mkquizrc
@@ -14,3 +17,4 @@ package-lock.json
 *.log
 *.tgz
 *.txt
+*.env

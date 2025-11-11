@@ -5,7 +5,7 @@ node_modules/
 
 tasks.txt
 .mkquizrc
-json.js
+src/utils/json.ts
 temp.json
 example.json
 package-lock.json

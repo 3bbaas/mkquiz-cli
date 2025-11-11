@@ -1,0 +1,15 @@
+node_modules
+dist
+logs
+uploads
+.git
+.gitignore
+.mkquizrc
+*.log
+*.md
+.vscode
+.idea
+tests
+docs
+temp.json
+example.json
