@@ -1,16 +1,27 @@
-tests/
-docs/
+/node_modules
+/dist
+/logs
+/uploads
 .idea/
-node_modules/
 
-tasks.txt
+.env
+
 .mkquizrc
-src/utils/json.ts
-temp.json
-example.json
-package-lock.json
-*.json
 
 *.log
 *.tgz
 *.txt
+
+
+/tests
+/docs
+
+**/*.json
+
+!package.json
+!package-lock.json
+!tsconfig.json
+!tslint.json
+!settings.json
+
+json.js

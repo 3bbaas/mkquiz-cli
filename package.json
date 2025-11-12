@@ -1,0 +1,53 @@
+{
+  "name": "@3bbas/mkquiz",
+  "version": "2.1.0",
+  "description": "This cli tool to support Quizzez project for ma-helper (github user).",
+  "keywords": [
+    "ma-helper",
+    "mkquiz"
+  ],
+  "author": "3bbas",
+  "bin": {
+    "mkquiz": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "public",
+    "README.md"
+  ],
+  "type": "commonjs",
+  "scripts": {
+    "start": "ts-node src/index.ts",
+    "server": "ts-node src/server/index.ts",
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "body-parser": "^2.2.0",
+    "chalk": "^4.1.2",
+    "commander": "^14.0.2",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "figlet": "^1.9.3",
+    "inquirer": "^12.11.0",
+    "multer": "^2.0.2",
+    "ora": "^8.2.0",
+    "pdf-parse": "^2.4.5",
+    "winston": "^3.18.3"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.5",
+    "@types/figlet": "^1.7.0",
+    "@types/inquirer": "^9.0.9",
+    "@types/multer": "^2.0.0",
+    "@types/node": "^24.10.0",
+    "prettier": "^3.6.2",
+    "prettier-plugin-sort-imports": "^1.8.8",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}

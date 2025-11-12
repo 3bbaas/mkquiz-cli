@@ -15,7 +15,25 @@ import log from '../utils/logger';
 import { createGeminiOcrService } from '../utils/geminiOcr';
 
 const app = express();
-const upload = multer({ dest: 'uploads/' });
+
+// Configure multer to preserve file extensions
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        // Ensure uploads directory exists
+        if (!fs.existsSync('uploads')) {
+            fs.mkdirSync('uploads', { recursive: true });
+        }
+        cb(null, 'uploads/');
+    },
+    filename: function (req, file, cb) {
+        // Generate unique filename with original extension
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const ext = path.extname(file.originalname);
+        cb(null, file.fieldname + '-' + uniqueSuffix + ext);
+    }
+});
+
+const upload = multer({ storage: storage });
 
 // Middleware
 app.use(cors());
@@ -423,11 +441,50 @@ app.get('/api/health', (req: Request, res: Response) => {
 });
 
 /**
+ * Clean up old temporary files in uploads directory
+ */
+function cleanupOldTempFiles() {
+    try {
+        const uploadsDir = 'uploads';
+        if (!fs.existsSync(uploadsDir)) {
+            return;
+        }
+
+        const files = fs.readdirSync(uploadsDir);
+        const now = Date.now();
+        const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+
+        let cleaned = 0;
+        files.forEach(file => {
+            const filePath = path.join(uploadsDir, file);
+            try {
+                const stats = fs.statSync(filePath);
+                if (now - stats.mtimeMs > maxAge) {
+                    fs.unlinkSync(filePath);
+                    cleaned++;
+                }
+            } catch (e) {
+                // Ignore errors for individual files
+            }
+        });
+
+        if (cleaned > 0) {
+            log.info(`Cleaned up ${cleaned} old temporary file(s)`);
+        }
+    } catch (error) {
+        log.error('Error cleaning up temporary files', error);
+    }
+}
+
+/**
  * Start the server
  */
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 export function startServer(port: number = PORT) {
+    // Clean up old temporary files on startup
+    cleanupOldTempFiles();
+
     app.listen(port, () => {
         log.info(`mkquiz web server started on http://localhost:${port}`);
         console.log(`\n🚀 mkquiz Web GUI: http://localhost:${port}`);

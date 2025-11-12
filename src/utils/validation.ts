@@ -20,6 +20,13 @@ export function validateFileExtension(
     errorMessage?: string
 ): boolean {
     const ext = path.extname(filePath);
+    console.log("===============================")
+    console.log(filePath)
+    console.log(ext)
+    console.log(expectedExtension)
+    console.log(ext !== expectedExtension)
+    console.log("===============================")
+
     if (ext !== expectedExtension) {
         throw new ValidationError(
             errorMessage || `Expected ${expectedExtension} file but got ${ext}`,
@@ -41,6 +48,7 @@ export function validateJsonFile(filePath: string): unknown {
     try {
         validatePathExists(filePath);
         validateFileExtension(filePath, '.json');
+        console.log("iam here ")
         const content = fs.readFileSync(filePath, 'utf-8');
         return JSON.parse(content);
     } catch (error) {
